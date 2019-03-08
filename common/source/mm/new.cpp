@@ -48,6 +48,17 @@ void operator delete ( void* address )
 }
 
 /**
+ * overloaded normal delete with size
+ * @param address the address of the memory to delete
+ * @param size the size of the memory to delete (ignored)
+ */
+void operator delete ( void* address, size_t size )
+{
+  (void)size;
+  _delete(address);
+}
+
+/**
  * overloaded array new operator
  * @param size the size of the array to allocate
  * @return the pointer to the new memory
@@ -63,6 +74,17 @@ void* operator new[] ( size_t size )
  */
 void operator delete[] ( void* address )
 {
+  _delete(address);
+}
+
+/**
+ * overloaded array delete operator with size
+ * @param address the address of the array to delete
+ * @param size the size of the array to delete (ignored)
+ */
+void operator delete[] ( void* address, size_t size )
+{
+  (void)size;
   _delete(address);
 }
 
