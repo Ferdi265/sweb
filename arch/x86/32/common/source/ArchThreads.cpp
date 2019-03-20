@@ -79,53 +79,6 @@ void ArchThreads::yield()
   __asm__ __volatile__("int $65");
 }
 
-uint32 ArchThreads::testSetLock(uint32 &lock, uint32 new_value)
-{
-  return __sync_lock_test_and_set(&lock,new_value);
-}
-
-uint32 ArchThreads::atomic_add(uint32 &value, int32 increment)
-{
-  return __sync_fetch_and_add(&value,increment);
-}
-
-int32 ArchThreads::atomic_add(int32 &value, int32 increment)
-{
-  return __sync_fetch_and_add(&value,increment);
-}
-
-uint64 ArchThreads::atomic_add(uint64 &value, int64 increment)
-{
-  return __sync_fetch_and_add(&value,increment);
-}
-
-int64 ArchThreads::atomic_add(int64 &value, int64 increment)
-{
-  return __sync_fetch_and_add(&value,increment);
-}
-
-
-void ArchThreads::atomic_set(uint32& target, uint32 value)
-{
-  __atomic_store_n(&(target), value, __ATOMIC_SEQ_CST);
-}
-
-void ArchThreads::atomic_set(int32& target, int32 value)
-{
-  __atomic_store_n(&(target), value, __ATOMIC_SEQ_CST);
-}
-
-void ArchThreads::atomic_set(uint64& target, uint64 value)
-{
-  __atomic_store_n(&(target), value, __ATOMIC_SEQ_CST);
-}
-
-void ArchThreads::atomic_set(int64& target, int64 value)
-{
-  __atomic_store_n(&(target), value, __ATOMIC_SEQ_CST);
-}
-
-
 void ArchThreads::printThreadRegisters(Thread *thread, bool verbose)
 {
   printThreadRegisters(thread,0,verbose);
