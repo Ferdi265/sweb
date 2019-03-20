@@ -123,7 +123,7 @@ public:
     __asm__ __volatile__(
       "mfence\n\t"
       "mov%z0 %1, %0\n\t"
-      : "=r"(ret) : "m"(&target)
+      : "=r"(ret) : "m"(target)
     );
     return ret;
   }
@@ -134,7 +134,7 @@ public:
     __asm__ __volatile__(
       "mov%z0 %0, %1\n\t"
       "mfence\n\t"
-      :: "r"(value), "m"(&target)
+      :: "r"(value), "m"(target)
     );
   }
 
@@ -143,7 +143,7 @@ public:
   {
     __asm__ __volatile__(
       "lock xchg%z0 %0, %1\n\t"
-      : "+r"(val) : "m"(&target)
+      : "+r"(val) : "m"(target)
     );
     return val;
   }
@@ -155,7 +155,7 @@ public:
     __asm__ __volatile__(
       "lock cmpxchg%z2 %2, %3\n\t"
       "setz %b0\n\t"
-      : "=r"(ret), "+a"(expected), "+r"(desired) : "m"(&target)
+      : "=r"(ret), "+a"(expected), "+r"(desired) : "m"(target)
     );
     return ret;
   }
@@ -165,7 +165,7 @@ public:
   {
     __asm__ __volatile__(
       "lock xadd%z0 %0, %1\n\t"
-      : "+r"(inc) : "m"(&target)
+      : "+r"(inc) : "m"(target)
     );
     return inc;
   }
