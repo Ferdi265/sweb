@@ -107,7 +107,13 @@ public:
   static void setAddressSpace(Thread *thread, ArchMemory& arch_memory);
 
   template <class T>
-  static bool atomic_is_lock_free()
+  constexpr static bool atomic_is_implemented()
+  {
+    return atomic_is_lock_free<T>();
+  }
+
+  template <class T>
+  constexpr static bool atomic_is_lock_free()
   {
     return
       sizeof (T) == 1 ||

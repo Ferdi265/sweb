@@ -26,6 +26,7 @@ enum memory_order {
 
 template <typename T>
 class atomic {
+    static_assert(ArchThreads::atomic_is_implemented<T>());
     T			_v;
 public:
 			atomic (void) = default;
