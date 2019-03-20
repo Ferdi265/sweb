@@ -235,7 +235,7 @@ void Lock::lockWaitersList()
   // The waiters list lock is a simple spinlock.
   // Just wait until the holding thread is releasing the lock,
   // and acquire it. These steps have to be atomic.
-  while(ArchThreads::atomic_exchange<size_t>(waiters_list_lock_, 1))
+  while(ArchThreads::atomic_test_set_lock(waiters_list_lock_, 1))
   {
     Scheduler::instance()->yield();
   }

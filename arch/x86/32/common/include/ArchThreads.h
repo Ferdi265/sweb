@@ -231,6 +231,11 @@ public:
     asm("mfence");
   }
 
+  static size_t atomic_test_set_lock(size_t& lock, size_t new_value)
+  {
+    return atomic_exchange<size_t>(lock, new_value);
+  }
+
 /**
  *
  * @param thread
