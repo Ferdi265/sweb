@@ -116,8 +116,8 @@ public:
   static T atomic_load(T& target)
   {
     T ret;
+    atomic_fence();
     __asm__ __volatile__(
-      "mfence\n\t"
       "mov%z0 %1, %0\n\t"
       : "=r"(ret) : "m"(target)
     );
@@ -129,9 +129,9 @@ public:
   {
     __asm__ __volatile__(
       "mov%z0 %0, %1\n\t"
-      "mfence\n\t"
       :: "r"(value), "m"(target)
     );
+    atomic_fence();
   }
 
   template <class T>
