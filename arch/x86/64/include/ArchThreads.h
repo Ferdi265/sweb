@@ -106,36 +106,134 @@ public:
  */
   static void setAddressSpace(Thread *thread, ArchMemory& arch_memory);
 
-/**
- * uninterruptable locked operation
- * exchanges value in variable lock with new_value and returns the old_value
- *
- * @param &lock Reference to variable being tested
- * @param new_value to set variable lock to
- * @returns old_value of variable lock
- */
-  static size_t testSetLock(size_t &lock, size_t new_value);
+  template <class T>
+  static bool atomic_is_lock_free()
+  {
+    return
+      sizeof (T) == 1 ||
+      sizeof (T) == 2 ||
+      sizeof (T) == 4 ||
+      sizeof (T) == 8;
+  }
 
-/**
- * atomically increments or decrements value by increment
- *
- * @param &value Reference to value
- * @param increment can be positive or negative
- * @returns old value of value
- */
-  static uint64 atomic_add(uint64 &value, int64 increment);
-  static int64 atomic_add(int64 &value, int64 increment);
+  template <class T>
+  static T atomic_load(T& target)
+  {
+    T ret;
+    __asm__ __volatile__(
+      "mfence\n\t"
+      "mov%z0 %1, %0\n\t"
+      : "=r"(ret) : "m"(&target)
+    );
+    return ret;
+  }
 
-  /**
-   * Atomically set a target to another value.
-   *
-   * @param target The target which shall be set
-   * @param value The value which shall be set
-   */
-  static void atomic_set(uint32 &target, uint32 value);
-  static void atomic_set(int32 &target, int32 value);
-  static void atomic_set(uint64 &target, uint64 value);
-  static void atomic_set(int64 &target, int64 value);
+  template <class T>
+  static void atomic_store(T& target, T value)
+  {
+    __asm__ __volatile__(
+      "mov%z0 %0, %1\n\t"
+      "mfence\n\t"
+      :: "r"(value), "m"(&target)
+    );
+  }
+
+  template <class T>
+  static T atomic_exchange(T& target, T val)
+  {
+    __asm__ __volatile__(
+      "lock xchg%z0 %0, %1\n\t"
+      : "+r"(val) : "m"(&target)
+    );
+    return val;
+  }
+
+  template <class T>
+  static bool atomic_compare_exchange(T& target, T& expected, T desired)
+  {
+    bool ret;
+    __asm__ __volatile__(
+      "lock cmpxchg%z2 %2, %3\n\t"
+      "setz %b0\n\t"
+      : "=r"(ret), "+a"(expected), "+r"(desired) : "m"(&target)
+    );
+    return ret;
+  }
+
+  template <class T>
+  static T atomic_fetch_add(T& target, T inc)
+  {
+    __asm__ __volatile__(
+      "lock xadd%z0 %0, %1\n\t"
+      : "+r"(inc) : "m"(&target)
+    );
+    return inc;
+  }
+
+  template <class T>
+  static T atomic_fetch_and(T& target, T mask)
+  {
+    T t = atomic_load(target);
+    while (!atomic_compare_exchange(target, t, t & mask));
+    return t;
+  }
+
+  template <class T>
+  static T atomic_fetch_or(T& target, T mask)
+  {
+    T t = atomic_load(target);
+    while (!atomic_compare_exchange(target, t, t | mask));
+    return t;
+  }
+
+  template <class T>
+  static T atomic_fetch_xor(T& target, T mask)
+  {
+    T t = atomic_load(target);
+    while (!atomic_compare_exchange(target, t, t ^ mask));
+    return t;
+  }
+
+  template <class T>
+  static T atomic_fetch_sub(T& target, T dec)
+  {
+    return atomic_fetch_add(target, -dec);
+  }
+
+  template <class T>
+  static T atomic_add_fetch(T& target, T inc)
+  {
+    return atomic_fetch_add(target, inc) + inc;
+  }
+
+  template <class T>
+  static T atomic_sub_fetch(T& target, T dec)
+  {
+    return atomic_fetch_sub(target, dec) - dec;
+  }
+
+  template <class T>
+  static T atomic_and_fetch(T& target, T mask)
+  {
+    return atomic_fetch_and(target, mask) & mask;
+  }
+
+  template <class T>
+  static T atomic_or_fetch(T& target, T mask)
+  {
+    return atomic_fetch_or(target, mask) | mask;
+  }
+
+  template <class T>
+  static T atomic_xor_fetch(T& target, T mask)
+  {
+    return atomic_fetch_xor(target, mask) ^ mask;
+  }
+
+  static void atomic_fence()
+  {
+    asm("mfence");
+  }
 
 /**
  *
@@ -161,4 +259,3 @@ private:
    */
   static void createBaseThreadRegisters(ArchThreadRegisters *&info, void* start_function, void* stack);
 };
-

@@ -34,7 +34,7 @@ bool Mutex::acquireNonBlocking(pointer called_by)
   // So in case you see this comment, re-think your implementation and don't just comment out this line!
   doChecksBeforeWaiting();
 
-  if(ArchThreads::testSetLock(mutex_, 1))
+  if(ArchThreads::atomic_exchange<size_t>(mutex_, 1))
   {
     // The mutex is already held by another thread,
     // so we are not allowed to lock it.
@@ -60,12 +60,12 @@ void Mutex::acquire(pointer called_by)
 //    debug(LOCK, "The acquire is called by: ");
 //    kernel_debug_info->printCallInformation(called_by);
 //  }
-  while(ArchThreads::testSetLock(mutex_, 1))
+  while(ArchThreads::atomic_exchange<size_t>(mutex_, 1))
   {
     checkCurrentThreadStillWaitingOnAnotherLock();
     lockWaitersList();
     // Here we have to check for the lock again, in case some one released it in between, we might sleep forever.
-    if(!ArchThreads::testSetLock(mutex_, 1))
+    if(!ArchThreads::atomic_exchange<size_t>(mutex_, 1))
     {
       unlockWaitersList();
       break;

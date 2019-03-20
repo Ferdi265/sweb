@@ -25,6 +25,6 @@ void FileDescriptor::remove(FileDescriptor* fd)
 
 FileDescriptor::FileDescriptor(File* file)
 {
-  fd_ = ArchThreads::atomic_add(fd_num_, 1);
+  fd_ = ArchThreads::atomic_fetch_add(fd_num_, (size_t)1);
   file_ = file;
 }

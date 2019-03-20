@@ -5,7 +5,6 @@
 #include "kprintf.h"
 #include "VfsSyscall.h"
 
-
 ProcessRegistry* ProcessRegistry::instance_ = 0;
 
 ProcessRegistry::ProcessRegistry(FileSystemInfo *root_fs_info, char const *progs[]) :

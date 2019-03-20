@@ -67,7 +67,7 @@ void Lock::pushFrontToCurrentThreadHoldingList()
   if(!currentThread)
     return;
   next_lock_on_holding_list_ = currentThread->holding_lock_list_;
-  ArchThreads::atomic_set((pointer&)(currentThread->holding_lock_list_), (pointer)this);
+  ArchThreads::atomic_store((pointer&)(currentThread->holding_lock_list_), (pointer)this);
 }
 
 
@@ -116,7 +116,7 @@ void Lock::removeFromCurrentThreadHoldingList()
     return;
   if(currentThread->holding_lock_list_ == this)
   {
-    ArchThreads::atomic_set((pointer&)(currentThread->holding_lock_list_), (pointer)(this->next_lock_on_holding_list_));
+    ArchThreads::atomic_store((pointer&)(currentThread->holding_lock_list_), (pointer)(this->next_lock_on_holding_list_));
   }
   else
   {
@@ -125,7 +125,7 @@ void Lock::removeFromCurrentThreadHoldingList()
     {
       if(current->next_lock_on_holding_list_ == this)
       {
-        ArchThreads::atomic_set((pointer&)(current->next_lock_on_holding_list_), (pointer)(this->next_lock_on_holding_list_));
+        ArchThreads::atomic_store((pointer&)(current->next_lock_on_holding_list_), (pointer)(this->next_lock_on_holding_list_));
         break;
       }
     }
@@ -235,7 +235,7 @@ void Lock::lockWaitersList()
   // The waiters list lock is a simple spinlock.
   // Just wait until the holding thread is releasing the lock,
   // and acquire it. These steps have to be atomic.
-  while(ArchThreads::testSetLock(waiters_list_lock_, 1))
+  while(ArchThreads::atomic_exchange<size_t>(waiters_list_lock_, 1))
   {
     Scheduler::instance()->yield();
   }
@@ -253,7 +253,7 @@ void Lock::pushFrontCurrentThreadToWaitersList()
   currentThread->next_thread_in_lock_waiters_list_ = waiters_list_;
   // the following set has to be atomic
   // waiters_list_ = currentThread;
-  ArchThreads::atomic_set((pointer&)(waiters_list_), (pointer)(currentThread));
+  ArchThreads::atomic_store((pointer&)(waiters_list_), (pointer)(currentThread));
 }
 
 Thread* Lock::popBackThreadFromWaitersList()
@@ -268,7 +268,7 @@ Thread* Lock::popBackThreadFromWaitersList()
   {
     // this thread is the only one in the waiters list
     thread = waiters_list_;
-    ArchThreads::atomic_set((pointer&)(waiters_list_), (pointer)(0));
+    ArchThreads::atomic_store((pointer&)(waiters_list_), (pointer)(0));
     waiters_list_ = 0;
   }
   else
@@ -281,7 +281,7 @@ Thread* Lock::popBackThreadFromWaitersList()
 
     thread = previos->next_thread_in_lock_waiters_list_;
     // remove the last element
-    ArchThreads::atomic_set((pointer&)(previos->next_thread_in_lock_waiters_list_), (pointer)(0));
+    ArchThreads::atomic_store((pointer&)(previos->next_thread_in_lock_waiters_list_), (pointer)(0));
   }
   return thread;
 }
@@ -295,7 +295,7 @@ void Lock::removeCurrentThreadFromWaitersList()
   if(currentThread == waiters_list_)
   {
     // the current thread is the first element
-    ArchThreads::atomic_set((pointer&)(waiters_list_), (pointer)(currentThread->next_thread_in_lock_waiters_list_));
+    ArchThreads::atomic_store((pointer&)(waiters_list_), (pointer)(currentThread->next_thread_in_lock_waiters_list_));
   }
   else
   {
@@ -306,13 +306,13 @@ void Lock::removeCurrentThreadFromWaitersList()
       if(thread->next_thread_in_lock_waiters_list_ == currentThread)
       {
 
-        ArchThreads::atomic_set((pointer&)(thread->next_thread_in_lock_waiters_list_),
+        ArchThreads::atomic_store((pointer&)(thread->next_thread_in_lock_waiters_list_),
                                 (pointer)(currentThread->next_thread_in_lock_waiters_list_));
         break;
       }
     }
   }
-  ArchThreads::atomic_set((pointer&)(currentThread->next_thread_in_lock_waiters_list_ ), (pointer)0);
+  ArchThreads::atomic_store((pointer&)(currentThread->next_thread_in_lock_waiters_list_ ), (pointer)0);
   return;
 }
 

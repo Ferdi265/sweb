@@ -20,7 +20,7 @@ VfsMount vfs_dummy_;
 FileSystemInfo* getcwd() { return default_working_dir; }
 
 // obviously NOT atomic, we need this for compatability in single threaded host code
-size_t atomic_add(size_t& x,size_t y)
+size_t atomic_fetch_add(size_t& x,size_t y)
 {
   x += y;
   return x-y;

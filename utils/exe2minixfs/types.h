@@ -32,6 +32,6 @@ typedef uint64_t l_off_t;
 
 class FileSystemInfo;
 
-size_t atomic_add(size_t& x,size_t y);
+size_t atomic_fetch_add(size_t& x,size_t y);
 
 #endif
