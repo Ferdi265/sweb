@@ -93,36 +93,6 @@ public:
   static void setAddressSpace(Thread *thread, ArchMemory& arch_memory);
 
 /**
- * uninterruptable locked operation
- * exchanges value in variable lock with new_value and returns the old_value
- *
- * @param &lock Reference to variable being tested
- * @param new_value to set variable lock to
- * @returns old_value of variable lock
- */
-  static size_t testSetLock(size_t &lock, size_t new_value);
-
-/**
- * atomically increments or decrements value by increment
- *
- * @param &value Reference to value
- * @param increment can be positive or negative
- * @returns old value of value
- */
-  static uint32 atomic_add(uint32 &value, int32 increment);
-  static int32 atomic_add(int32 &value, int32 increment);
-  static uint64 atomic_add(uint64 &value, int64 increment);
-  static int64 atomic_add(int64 &value, int64 increment);
-
-  /**
-   * Atomically set a target to another value.
-   *
-   * @param target The target which shall be set
-   * @param value The value which shall be set
-   */
-  static void atomic_set(size_t &target, size_t value);
-  static void atomic_set(int32 &target, int32 value);
-/**
  *
  * @param thread
  * @param userspace_register

@@ -1,4 +1,5 @@
 #include "ArchThreads.h"
+#include "ArchAtomics.h"
 #include "ArchInterrupts.h"
 #include "ArchMemory.h"
 #include "kprintf.h"
@@ -8,11 +9,9 @@
 #include "Scheduler.h"
 #include "SpinLock.h"
 
-SpinLock global_atomic_add_lock("");
-
 void ArchThreads::initialise()
 {
-  new (&global_atomic_add_lock) SpinLock("global_atomic_add_lock");
+  ArchAtomics::initialise();
   currentThreadRegisters = (ArchThreadRegisters*) new uint8[sizeof(ArchThreadRegisters)];
   pointer paging_root = VIRTUAL_TO_PHYSICAL_BOOT(((pointer)kernel_paging_level1));
   currentThreadRegisters->TTBR0 = paging_root;
@@ -68,60 +67,6 @@ void ArchThreads::yield()
   asm("SVC #0xffff");
 }
 
-size_t ArchThreads::testSetLock(size_t &lock, size_t new_value)
-{
-    volatile size_t ret = 0;
-
-	#ifdef VIRTUALIZED_QEMU
-    //on qemu the exclusive instructions do work
-    __atomic_exchange(&lock, &new_value, &ret, __ATOMIC_RELAXED);
-	#else
-
-    //    this is very terrible but in aarch64 there is no swp and the exclusive instructions
-    //    do not work without cache on the cortex-a53 of the raspi3
-
-    bool int_state = ArchInterrupts::disableInterrupts();
-
-    ret = lock;
-    lock = new_value;
-
-    if(int_state)
-        ArchInterrupts::enableInterrupts();
-
-	#endif
-
-    return ret;
-}
-
-
-uint32 ArchThreads::atomic_add(uint32 &value, int32 increment)
-{
-  global_atomic_add_lock.acquire();
-  uint32 result = value;
-  value += increment;
-  global_atomic_add_lock.release();
-  return result;
-}
-
-int32 ArchThreads::atomic_add(int32 &value, int32 increment)
-{
-  return (int32) ArchThreads::atomic_add((uint32 &) value, increment);
-}
-
-uint64 ArchThreads::atomic_add(uint64 &value, int64 increment)
-{
-  global_atomic_add_lock.acquire();
-  uint64 result = value;
-  value += increment;
-  global_atomic_add_lock.release();
-  return result;
-}
-
-int64 ArchThreads::atomic_add(int64 &value, int64 increment)
-{
-  return (int64) ArchThreads::atomic_add((uint64 &) value, increment);
-}
-
 void ArchThreads::printThreadRegisters(Thread *thread, bool verbose)
 {
   printThreadRegisters(thread,0,verbose);
@@ -149,18 +94,6 @@ void ArchThreads::printThreadRegisters(Thread *thread, uint32 userspace_register
                userspace_registers?"  User":"Kernel",thread,info,info->TTBR0,info->ELR,info->SP,info->SPSR,info->X[0],info->X[1],info->X[2],info->X[3],info->X[4],info->X[5],info->X[6],info->X[7],info->X[8],info->X[9],info->X[10],info->X[11],info->X[12]);
     }
 
-}
-
-
-
-void ArchThreads::atomic_set(size_t& target, size_t value)
-{
-    testSetLock(target,value);
-}
-
-void ArchThreads::atomic_set(int32& target, int32 value)
-{
-  atomic_set((size_t&)target, (size_t)value);
 }
 
 extern "C" void threadStartHack();
