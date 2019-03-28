@@ -10,7 +10,7 @@ extern "C"
 #endif
 
 #include "new.h"
-#include "ArchThreads.h"
+#include "ArchAtomics.h"
 #include "assert.h"
 
 template<class T>
@@ -54,16 +54,16 @@ void RingBuffer<T>::put ( T c )
   if ( old_write_pos == read_pos_ )
     return;
   buffer_[old_write_pos]=c;
-  ArchThreads::atomic_test_set_lock( write_pos_, ( old_write_pos + 1 ) % buffer_size_ );
+  ArchAtomics::test_set_lock( write_pos_, ( old_write_pos + 1 ) % buffer_size_ );
 }
 
 template <class T>
 void RingBuffer<T>::clear()
 {
-  ArchThreads::atomic_test_set_lock ( write_pos_,1 );
+  ArchAtomics::test_set_lock ( write_pos_,1 );
   // assumed that there is only one reader who can't have called clear and get at the same time.
   // here get would return garbage.
-  ArchThreads::atomic_test_set_lock ( read_pos_,0 );
+  ArchAtomics::test_set_lock ( read_pos_,0 );
 }
 
 template <class T>
@@ -73,7 +73,7 @@ bool RingBuffer<T>::get ( T &c )
   if ( write_pos_ == new_read_pos ) //nothing new to read
     return false;
   c = buffer_[new_read_pos];
-  ArchThreads::atomic_test_set_lock ( read_pos_,new_read_pos );
+  ArchAtomics::test_set_lock ( read_pos_,new_read_pos );
   return true;
 }
 

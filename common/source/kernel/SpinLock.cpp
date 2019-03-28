@@ -1,6 +1,6 @@
 #include "SpinLock.h"
 #include "kprintf.h"
-#include "ArchThreads.h"
+#include "ArchAtomics.h"
 #include "ArchInterrupts.h"
 #include "panic.h"
 #include "Scheduler.h"
@@ -34,7 +34,7 @@ bool SpinLock::acquireNonBlocking(pointer called_by)
   // So in case you see this comment, re-think your implementation and don't just comment out this line!
   doChecksBeforeWaiting();
 
-  if(ArchThreads::atomic_test_set_lock(lock_, 1))
+  if(ArchAtomics::test_set_lock(lock_, 1))
   {
     // The spinlock is held by another thread at the moment
     return false;
@@ -60,7 +60,7 @@ void SpinLock::acquire(pointer called_by)
 //    debug(LOCK, "The acquire is called by: ");
 //    kernel_debug_info->printCallInformation(called_by);
 //  }
-  if(ArchThreads::atomic_test_set_lock(lock_, 1))
+  if(ArchAtomics::test_set_lock(lock_, 1))
   {
     // We did not directly managed to acquire the spinlock, need to check for deadlocks and
     // to push the current thread to the waiters list.
@@ -72,7 +72,7 @@ void SpinLock::acquire(pointer called_by)
     unlockWaitersList();
 
     // here comes the basic spinlock
-    while(ArchThreads::atomic_test_set_lock(lock_, 1))
+    while(ArchAtomics::test_set_lock(lock_, 1))
     {
       //SpinLock: Simplest of Locks, do the next best thing to busy waiting
       Scheduler::instance()->yield();

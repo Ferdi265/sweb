@@ -1,7 +1,7 @@
 #include "FileDescriptor.h"
 #include <ulist.h>
 #ifndef EXE2MINIXFS
-#include "ArchThreads.h"
+#include "ArchAtomics.h"
 #include "Mutex.h"
 #endif
 #include "kprintf.h"
@@ -25,6 +25,6 @@ void FileDescriptor::remove(FileDescriptor* fd)
 
 FileDescriptor::FileDescriptor(File* file)
 {
-  fd_ = ArchThreads::atomic_fetch_add(fd_num_, (size_t)1);
+  fd_ = ArchAtomics::fetch_add(fd_num_, (size_t)1);
   file_ = file;
 }

@@ -4,7 +4,7 @@
 
 #define Mutex const char*
 #define MutexLock __attribute__((unused)) const char*
-#define ArchThreads
+#define ArchAtomics
 
 #include <stdint.h>
 #include <string.h>
@@ -32,6 +32,6 @@ typedef uint64_t l_off_t;
 
 class FileSystemInfo;
 
-size_t atomic_fetch_add(size_t& x,size_t y);
+size_t fetch_add(size_t& x,size_t y);
 
 #endif

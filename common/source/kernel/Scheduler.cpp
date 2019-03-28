@@ -2,13 +2,14 @@
 #include "Thread.h"
 #include "panic.h"
 #include "ArchThreads.h"
+#include "ArchAtomics.h"
 #include "ArchCommon.h"
 #include "kprintf.h"
 #include "ArchInterrupts.h"
 #include "KernelMemoryManager.h"
 #include <ulist.h>
 #include "backtrace.h"
-#include "ArchThreads.h"
+#include "ArchAtomics.h"
 #include "Mutex.h"
 #include "umap.h"
 #include "ustring.h"
@@ -162,7 +163,7 @@ void Scheduler::printThreadList()
 
 void Scheduler::lockScheduling() //not as severe as stopping Interrupts
 {
-  if (unlikely(ArchThreads::atomic_test_set_lock(block_scheduling_, 1)))
+  if (unlikely(ArchAtomics::test_set_lock(block_scheduling_, 1)))
     kpanict("FATAL ERROR: Scheduler::*: block_scheduling_ was set !! How the Hell did the program flow get here then ?\n");
 }
 

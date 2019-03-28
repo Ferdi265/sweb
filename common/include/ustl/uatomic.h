@@ -4,7 +4,7 @@
 // This file is free software, distributed under the MIT License.
 
 #pragma once
-#include "ArchThreads.h"
+#include "ArchAtomics.h"
 #include "utypes.h"
 #if HAVE_CPP11
 
@@ -26,7 +26,7 @@ enum memory_order {
 
 template <typename T>
 class atomic {
-    static_assert(ArchThreads::atomic_is_implemented<T>());
+    static_assert(ArchAtomics::is_implemented<T>());
     T			_v;
 public:
 			atomic (void) = default;
@@ -34,13 +34,13 @@ public:
 			atomic (const atomic&) = delete;
     atomic&		operator= (const atomic&) = delete;
     inline bool		is_lock_free (void) const
-			    { return ArchThreads::atomic_is_lock_free<T>(); }
+			    { return ArchAtomics::is_lock_free<T>(); }
     inline void		store (T v, memory_order order = memory_order_seq_cst)
-			    { (void)order; ArchThreads::atomic_store (_v, v); }
+			    { (void)order; ArchAtomics::store (_v, v); }
     inline T		load (memory_order order = memory_order_seq_cst) const
-			    { (void)order; return ArchThreads::atomic_load (_v); }
+			    { (void)order; return ArchAtomics::load (_v); }
     inline T		exchange (T v, memory_order order = memory_order_seq_cst)
-			    { (void)order; return ArchThreads::atomic_exchange(_v, v); }
+			    { (void)order; return ArchAtomics::exchange(_v, v); }
     inline bool		compare_exchange_weak (T& expected, T desired, memory_order order = memory_order_seq_cst)
 			    { (void)order; return exchange(expected, desired); }
     inline bool		compare_exchange_weak (T& expected, T desired, memory_order success, memory_order failure)
@@ -48,25 +48,25 @@ public:
     inline bool		compare_exchange_strong (T& expected, T desired, memory_order success, memory_order failure)
 			    { (void)success; (void)failure; return exchange(expected, desired); }
     inline T		fetch_add (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_fetch_add(_v, v); }
+			    { (void)order; return ArchAtomics::fetch_add(_v, v); }
     inline T		fetch_sub (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_fetch_sub(_v, v); }
+			    { (void)order; return ArchAtomics::fetch_sub(_v, v); }
     inline T		fetch_and (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_fetch_and(_v, v); }
+			    { (void)order; return ArchAtomics::fetch_and(_v, v); }
     inline T		fetch_or (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_fetch_or (_v, v); }
+			    { (void)order; return ArchAtomics::fetch_or (_v, v); }
     inline T		fetch_xor (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_fetch_xor (_v, v); }
+			    { (void)order; return ArchAtomics::fetch_xor (_v, v); }
     inline T		add_fetch (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_add_fetch (_v, v); }
+			    { (void)order; return ArchAtomics::add_fetch (_v, v); }
     inline T		sub_fetch (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_sub_fetch (_v, v); }
+			    { (void)order; return ArchAtomics::sub_fetch (_v, v); }
     inline T		and_fetch (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_and_fetch (_v, v); }
+			    { (void)order; return ArchAtomics::and_fetch (_v, v); }
     inline T		or_fetch (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_or_fetch (_v, v); }
+			    { (void)order; return ArchAtomics::or_fetch (_v, v); }
     inline T		xor_fetch (T v, memory_order order = memory_order_seq_cst )
-			    { (void)order; return ArchThreads::atomic_xor_fetch (_v, v); }
+			    { (void)order; return ArchAtomics::xor_fetch (_v, v); }
     inline		operator T (void) const	{ return load(); }
     inline T		operator= (T v)		{ store(v); return v; }
     inline T		operator++ (int)	{ return fetch_add (1); }
@@ -92,9 +92,9 @@ public:
 			atomic_flag (const atomic_flag&) = delete;
     atomic_flag&	operator= (const atomic_flag&) = delete;
     void		clear (memory_order order = memory_order_seq_cst)
-			    { (void)order; ArchThreads::atomic_store (_v, false); }
+			    { (void)order; ArchAtomics::store (_v, false); }
     bool		test_and_set (memory_order order = memory_order_seq_cst)
-			    { (void)order; return ArchThreads::atomic_exchange(_v, true); }
+			    { (void)order; return ArchAtomics::exchange(_v, true); }
 };
 #define ATOMIC_FLAG_INIT	{false}
 
@@ -107,9 +107,9 @@ template <typename T>
 static inline T kill_dependency (T v) noexcept
     { T r (v); return r; }
 static inline void atomic_thread_fence (memory_order order) noexcept
-    { (void)order; ArchThreads::atomic_fence(); }
+    { (void)order; ArchAtomics::fence(); }
 static inline void atomic_signal_fence (memory_order order) noexcept
-    { (void)order; ArchThreads::atomic_fence(); }
+    { (void)order; ArchAtomics::fence(); }
 
 } // namespace
 } // namespace ustl
