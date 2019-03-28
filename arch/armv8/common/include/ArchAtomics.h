@@ -13,7 +13,7 @@ public:
     #ifdef VIRTUALIZED_QEMU
       return is_lock_free<T>();
     #else
-      return 
+      return
         sizeof (T) == 1 ||
         sizeof (T) == 2 ||
         sizeof (T) == 4 ||
@@ -103,7 +103,34 @@ public:
   }
 
   template <class T>
-  static bool compare_exchange(T& target, T& expected, T desired);
+  static bool compare_exchange(T& target, T& expected, T desired)
+  {
+    #ifdef VIRTUALIZED_QEMU
+      bool ret;
+      T actual;
+      do {
+        actual = impl<T>::load_exclusive(target);
+
+        ret = actual == expected;
+        if (!ret) break;
+      } while (!impl<T>::store_exclusive(target, desired));
+
+      if (!ret) expected = actual;
+      return ret;
+    #else
+      bool ret;
+      global_atomic_lock.acquire();
+      if (target == expected) {
+        target = desired;
+        ret = true;
+      } else {
+        expected = target;
+        ret = false;
+      }
+      global_atomic_lock.release();
+      return ret;
+    #endif
+  }
 
   template <class T>
   static T fetch_add(T& target, T inc) {
