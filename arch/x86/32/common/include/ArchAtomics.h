@@ -133,13 +133,7 @@ public:
     return fetch_xor(target, mask) ^ mask;
   }
 
-  static void fence()
-  {
-    asm("mfence");
-  }
+  static void fence();
 
-  static size_t test_set_lock(size_t& lock, size_t new_value)
-  {
-    return exchange<size_t>(lock, new_value);
-  }
+  static size_t test_set_lock(size_t& lock, size_t new_value);
 };
