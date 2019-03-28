@@ -190,6 +190,13 @@ private:
   class impl;
 };
 
+#ifndef VIRTUALIZED_QEMU
+  // explicitly specialize ArchAtomics::store since the Lock class wants to use it
+  // this avoids a deadlock when locking the global atomic lock
+  template <>
+  void ArchAtomics::store<size_t>(size_t& target, size_t value);
+#endif
+
 template <class T>
 class ArchAtomics::impl<T, 1> {
 public:

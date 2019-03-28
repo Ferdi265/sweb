@@ -2,7 +2,6 @@
 #include "SpinLock.h"
 #include "ArchAtomics.h"
 #include "ArchInterrupts.h"
-#include "debug.h"
 
 #ifndef VIRTUALIZED_QEMU
   SpinLock ArchAtomics::global_atomic_lock("");
@@ -38,3 +37,14 @@ size_t ArchAtomics::test_set_lock(size_t& lock, size_t new_value)
     return ret;
   #endif
 }
+
+#ifndef VIRTUALIZED_QEMU
+  template <>
+  void ArchAtomics::store<size_t>(size_t& target, size_t value)
+  {
+    // avoid locking the global atomic lock
+    // since the Lock class wants to use atomic store
+    // therefore use the interrupt-disabling test_set_lock
+    test_set_lock(target, value);
+  }
+#endif
