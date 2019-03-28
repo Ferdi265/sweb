@@ -6,6 +6,7 @@
 #pragma once
 #include "ArchAtomics.h"
 #include "utypes.h"
+#include "uttraits.h"
 #if HAVE_CPP11
 
 //{{{ memory_order -----------------------------------------------------
@@ -38,7 +39,7 @@ public:
     inline void		store (T v, memory_order order = memory_order_seq_cst)
 			    { (void)order; ArchAtomics::store (_v, v); }
     inline T		load (memory_order order = memory_order_seq_cst) const
-			    { (void)order; return ArchAtomics::load (_v); }
+			    { (void)order; return ArchAtomics::load (const_cast<remove_const_t<T>&>(_v)); }
     inline T		exchange (T v, memory_order order = memory_order_seq_cst)
 			    { (void)order; return ArchAtomics::exchange(_v, v); }
     inline bool		compare_exchange_weak (T& expected, T desired, memory_order order = memory_order_seq_cst)
