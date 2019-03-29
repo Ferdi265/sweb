@@ -36,7 +36,7 @@ public:
   {
     __asm__ __volatile__(
       "mov%z0 %0, %1\n\t"
-      :: "r"(value), "m"(target)
+      :: "r"(value), "m"(target) : "memory"
     );
     fence();
   }
@@ -46,7 +46,7 @@ public:
   {
     __asm__ __volatile__(
       "lock xchg%z0 %0, %1\n\t"
-      : "+r"(val) : "m"(target)
+      : "+r"(val) : "m"(target) : "memory"
     );
     return val;
   }
@@ -58,7 +58,7 @@ public:
     __asm__ __volatile__(
       "lock cmpxchg%z2 %2, %3\n\t"
       "setz %b0\n\t"
-      : "=r"(ret), "+a"(expected), "+r"(desired) : "m"(target)
+      : "=r"(ret), "+a"(expected), "+r"(desired) : "m"(target) : "memory"
     );
     return ret;
   }
@@ -68,7 +68,7 @@ public:
   {
     __asm__ __volatile__(
       "lock xadd%z0 %0, %1\n\t"
-      : "+r"(inc) : "m"(target)
+      : "+r"(inc) : "m"(target) : "memory"
     );
     return inc;
   }

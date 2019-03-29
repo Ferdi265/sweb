@@ -2,7 +2,7 @@
 
 void ArchAtomics::fence()
 {
-  asm("mfence");
+  asm("mfence" ::: "memory");
 }
 
 size_t ArchAtomics::test_set_lock(size_t& lock, size_t new_value)

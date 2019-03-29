@@ -137,7 +137,7 @@ public:
     T ret;
     do {
       ret = load_exclusive(target);
-    } while (!store_exclusive(target, ret + inc));
+    } while (!store_exclusive<T>(target, ret + inc));
     return ret;
   }
 
@@ -146,7 +146,7 @@ public:
     T ret;
     do {
       ret = load_exclusive(target);
-    } while (!store_exclusive(target, ret & inc));
+    } while (!store_exclusive<T>(target, ret & inc));
     return ret;
   }
 
@@ -155,7 +155,7 @@ public:
     T ret;
     do {
       ret = load_exclusive(target);
-    } while (!store_exclusive(target, ret | inc));
+    } while (!store_exclusive<T>(target, ret | inc));
     return ret;
   }
 
@@ -164,7 +164,7 @@ public:
     T ret;
     do {
       ret = load_exclusive(target);
-    } while (!store_exclusive(target, ret ^ inc));
+    } while (!store_exclusive<T>(target, ret ^ inc));
     return ret;
   }
 
@@ -232,7 +232,7 @@ public:
     T ret;
     fence();
     __asm__ __volatile__(
-      "ldarb %0, %1\n\t"
+      "ldarb %w0, %1\n\t"
       : "=r"(ret) : "Q"(target)
     );
     return ret;
@@ -242,7 +242,7 @@ public:
   {
     T ret;
     __asm__ __volatile__(
-      "ldaxrb %0, %1\n\t"
+      "ldaxrb %w0, %1\n\t"
       : "=r"(ret) : "Q"(target)
     );
     return ret;
@@ -251,8 +251,8 @@ public:
   static void store(T& target, T value)
   {
     __asm__ __volatile__(
-      "stlrb %0, %1\n\t"
-      :: "r"(value), "Q"(target)
+      "stlrb %w0, %1\n\t"
+      :: "r"(value), "Q"(target) : "memory"
     );
     fence();
   }
@@ -261,8 +261,8 @@ public:
   {
     uint32 status;
     __asm__ __volatile__(
-      "stlxrb %w0, %1, %2\n\t"
-      : "=&r"(status) : "r"(value), "Q"(target)
+      "stlxrb %w0, %w1, %2\n\t"
+      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
     );
     return status == 0;
   }
@@ -271,10 +271,10 @@ public:
   {
     T ret;
     __asm__ __volatile__(
-      "1: ldaxrb %0, %2\n\t"
-      "stlxrb w1, %1, %2\n\t"
+      "1: ldaxrb %w0, %2\n\t"
+      "stlxrb w1, %w1, %2\n\t"
       "cbnz w1, 1b\n\t"
-      : "=&r"(ret) : "r"(value), "Q"(target) : "w1"
+      : "=&r"(ret) : "r"(value), "Q"(target) : "w1", "memory"
     );
     return ret;
   }
@@ -288,7 +288,7 @@ public:
     T ret;
     fence();
     __asm__ __volatile__(
-      "ldarh %0, %1\n\t"
+      "ldarh %w0, %1\n\t"
       : "=r"(ret) : "Q"(target)
     );
     return ret;
@@ -298,7 +298,7 @@ public:
   {
     T ret;
     __asm__ __volatile__(
-      "ldaxrh %0, %1\n\t"
+      "ldaxrh %w0, %1\n\t"
       : "=r"(ret) : "Q"(target)
     );
     return ret;
@@ -307,8 +307,8 @@ public:
   static void store(T& target, T value)
   {
     __asm__ __volatile__(
-      "stlrh %0, %1\n\t"
-      :: "r"(value), "Q"(target)
+      "stlrh %w0, %1\n\t"
+      :: "r"(value), "Q"(target) : "memory"
     );
     fence();
   }
@@ -317,8 +317,8 @@ public:
   {
     uint32 status;
     __asm__ __volatile__(
-      "stlxrh %w0, %1, %2\n\t"
-      : "=&r"(status) : "r"(value), "Q"(target)
+      "stlxrh %w0, %w1, %2\n\t"
+      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
     );
     return status == 0;
   }
@@ -327,10 +327,10 @@ public:
   {
     T ret;
     __asm__ __volatile__(
-      "1: ldaxrh %0, %2\n\t"
-      "stlxrh w1, %1, %2\n\t"
+      "1: ldaxrh %w0, %2\n\t"
+      "stlxrh w1, %w1, %2\n\t"
       "cbnz w1, 1b\n\t"
-      : "=&r"(ret) : "r"(value), "Q"(target) : "w1"
+      : "=&r"(ret) : "r"(value), "Q"(target) : "w1", "memory"
     );
     return ret;
   }
@@ -338,6 +338,62 @@ public:
 
 template <class T>
 class ArchAtomics::impl<T, 4> {
+public:
+  static T load(T& target)
+  {
+    T ret;
+    fence();
+    __asm__ __volatile__(
+      "ldar %w0, %1\n\t"
+      : "=r"(ret) : "Q"(target)
+    );
+    return ret;
+  }
+
+  static T load_exclusive(T& target)
+  {
+    T ret;
+    __asm__ __volatile__(
+      "ldaxr %w0, %1\n\t"
+      : "=r"(ret) : "Q"(target)
+    );
+    return ret;
+  }
+
+  static void store(T& target, T value)
+  {
+    __asm__ __volatile__(
+      "stlr %w0, %1\n\t"
+      :: "r"(value), "Q"(target) : "memory"
+    );
+    fence();
+  }
+
+  static bool store_exclusive(T& target, T value)
+  {
+    uint32 status;
+    __asm__ __volatile__(
+      "stlxr %w0, %w1, %2\n\t"
+      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
+    );
+    return status == 0;
+  }
+
+  static T exchange(T& target, T value)
+  {
+    T ret;
+    __asm__ __volatile__(
+      "1: ldaxr %w0, %2\n\t"
+      "stlxr w1, %w1, %2\n\t"
+      "cbnz w1, 1b\n\t"
+      : "=&r"(ret) : "r"(value), "Q"(target) : "w1", "memory"
+    );
+    return ret;
+  }
+};
+
+template <class T>
+class ArchAtomics::impl<T, 8> {
 public:
   static T load(T& target)
   {
@@ -364,7 +420,7 @@ public:
   {
     __asm__ __volatile__(
       "stlr %0, %1\n\t"
-      :: "r"(value), "Q"(target)
+      :: "r"(value), "Q"(target) : "memory"
     );
     fence();
   }
@@ -374,7 +430,7 @@ public:
     uint32 status;
     __asm__ __volatile__(
       "stlxr %w0, %1, %2\n\t"
-      : "=&r"(status) : "r"(value), "Q"(target)
+      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
     );
     return status == 0;
   }
@@ -386,42 +442,8 @@ public:
       "1: ldaxr %0, %2\n\t"
       "stlxr w1, %1, %2\n\t"
       "cbnz w1, 1b\n\t"
-      : "=&r"(ret) : "r"(value), "Q"(target) : "w1"
+      : "=&r"(ret) : "r"(value), "Q"(target) : "w1", "memory"
     );
     return ret;
-  }
-};
-
-template <class T>
-class ArchAtomics::impl<T, 8> {
-public:
-  static T load(T& target)
-  {
-    // instruction name is the same for 4 and 8 bytes
-    return ArchAtomics::impl<T, 4>::load(target);
-  }
-
-  static T load_exclusive(T& target)
-  {
-    // instruction name is the same for 4 and 8 bytes
-    return ArchAtomics::impl<T, 4>::load_exclusive(target);
-  }
-
-  static void store(T& target, T value)
-  {
-    // instruction name is the same for 4 and 8 bytes
-    ArchAtomics::impl<T, 4>::store(target, value);
-  }
-
-  static bool store_exclusive(T& target, T value)
-  {
-    // instruction name is the same for 4 and 8 bytes
-    return ArchAtomics::impl<T, 4>::store_exclusive(target, value);
-  }
-
-  static T exchange(T& target, T value)
-  {
-    // instruction name is the same for 4 and 8 bytes
-    return ArchAtomics::impl<T, 4>::exchange(target, value);
   }
 };
