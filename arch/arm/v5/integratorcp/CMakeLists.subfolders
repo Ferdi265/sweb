@@ -1,0 +1,4 @@
+add_subdirectory(arm)
+add_subdirectory(arm/v5/common)
+add_subdirectory(arm/v5/integratorcp)
+
