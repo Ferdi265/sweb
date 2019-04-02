@@ -39,25 +39,14 @@ public:
   static T load(T& target)
   {
     #ifdef VIRTUALIZED_QEMU
-      return impl<T>::load(target);
+      fence();
+      T ret = (volatile T&)target;
+      fence();
+      return ret;
     #else
       global_atomic_lock.acquire();
       T ret = target;
       global_atomic_lock.release();
-      return ret;
-    #endif
-  }
-
-  template <class T>
-  static T load_exclusive(T& target)
-  {
-    #ifdef VIRTUALIZED_QEMU
-      return impl<T>::load_exclusive(target);
-    #else
-      global_atomic_lock.acquire();
-      T ret = target;
-      // simulate exclusive load by not unlocking the atomic lock
-      // use with care!!
       return ret;
     #endif
   }
@@ -66,25 +55,13 @@ public:
   static void store(T& target, T value)
   {
     #ifdef VIRTUALIZED_QEMU
-      impl<T>::store(target, value);
+      fence();
+      ((volatile T&)target) = value;
+      fence();
     #else
       global_atomic_lock.acquire();
       target = value;
       global_atomic_lock.release();
-    #endif
-  }
-
-  template <class T>
-  static bool store_exclusive(T& target, T value)
-  {
-    #ifdef VIRTUALIZED_QEMU
-      return impl<T>::store_exclusive(target, value);
-    #else
-      // simulate exclusive store by not locking the atomic lock
-      // use with care!!
-      target = value;
-      global_atomic_lock.release();
-      return true;
     #endif
   }
 
@@ -106,17 +83,7 @@ public:
   static bool compare_exchange(T& target, T& expected, T desired)
   {
     #ifdef VIRTUALIZED_QEMU
-      bool ret;
-      T actual;
-      do {
-        actual = impl<T>::load_exclusive(target);
-
-        ret = actual == expected;
-        if (!ret) break;
-      } while (!impl<T>::store_exclusive(target, desired));
-
-      if (!ret) expected = actual;
-      return ret;
+      return impl<T>::compare_exchange(target, expected, desired);
     #else
       bool ret;
       global_atomic_lock.acquire();
@@ -134,38 +101,33 @@ public:
 
   template <class T>
   static T fetch_add(T& target, T inc) {
-    T ret;
-    do {
-      ret = load_exclusive(target);
-    } while (!store_exclusive<T>(target, ret + inc));
-    return ret;
+    T t = load(target);
+    while (!compare_exchange(target, ret, ret + inc));
+    return t;
   }
 
   template <class T>
-  static T fetch_and(T& target, T inc) {
-    T ret;
-    do {
-      ret = load_exclusive(target);
-    } while (!store_exclusive<T>(target, ret & inc));
-    return ret;
+  static T fetch_and(T& target, T mask)
+  {
+    T t = load(target);
+    while (!compare_exchange(target, t, t & mask));
+    return t;
   }
 
   template <class T>
-  static T fetch_or(T& target, T inc) {
-    T ret;
-    do {
-      ret = load_exclusive(target);
-    } while (!store_exclusive<T>(target, ret | inc));
-    return ret;
+  static T fetch_or(T& target, T mask)
+  {
+    T t = load(target);
+    while (!compare_exchange(target, t, t | mask));
+    return t;
   }
 
   template <class T>
-  static T fetch_xor(T& target, T inc) {
-    T ret;
-    do {
-      ret = load_exclusive(target);
-    } while (!store_exclusive<T>(target, ret ^ inc));
-    return ret;
+  static T fetch_xor(T& target, T mask)
+  {
+    T t = load(target);
+    while (!compare_exchange(target, t, t ^ mask));
+    return t;
   }
 
   template <class T>
@@ -227,46 +189,6 @@ private:
 template <class T>
 class ArchAtomics::impl<T, 1> {
 public:
-  static T load(T& target)
-  {
-    T ret;
-    fence();
-    __asm__ __volatile__(
-      "ldarb %w0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static T load_exclusive(T& target)
-  {
-    T ret;
-    __asm__ __volatile__(
-      "ldaxrb %w0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static void store(T& target, T value)
-  {
-    __asm__ __volatile__(
-      "stlrb %w0, %1\n\t"
-      :: "r"(value), "Q"(target) : "memory"
-    );
-    fence();
-  }
-
-  static bool store_exclusive(T& target, T value)
-  {
-    uint32 status;
-    __asm__ __volatile__(
-      "stlxrb %w0, %w1, %2\n\t"
-      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
-    );
-    return status == 0;
-  }
-
   static T exchange(T& target, T value)
   {
     T ret;
@@ -278,51 +200,28 @@ public:
     );
     return ret;
   }
+
+  static bool compare_exchange(T& target, T& expected, T desired)
+  {
+    bool ret;
+    T actual;
+    __asm__ __volatile__(
+      "1: ldaxrb %w1, %4\n\t"
+      "cmp %w1, %w2\n\t"
+      "bne 1f\n\t"
+      "stlxrb w1, %w3, %4\n\t"
+      "cbnz w1, 1b\n\t"
+      "1: cset %0, eq\n\t"
+      : "=&r"(ret), "=r"(actual) : "r"(expected), "r"(desired), "Q"(target) : "w1", "memory"
+    );
+    if (!ret) expected = actual;
+    return ret;
+  }
 };
 
 template <class T>
 class ArchAtomics::impl<T, 2> {
 public:
-  static T load(T& target)
-  {
-    T ret;
-    fence();
-    __asm__ __volatile__(
-      "ldarh %w0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static T load_exclusive(T& target)
-  {
-    T ret;
-    __asm__ __volatile__(
-      "ldaxrh %w0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static void store(T& target, T value)
-  {
-    __asm__ __volatile__(
-      "stlrh %w0, %1\n\t"
-      :: "r"(value), "Q"(target) : "memory"
-    );
-    fence();
-  }
-
-  static bool store_exclusive(T& target, T value)
-  {
-    uint32 status;
-    __asm__ __volatile__(
-      "stlxrh %w0, %w1, %2\n\t"
-      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
-    );
-    return status == 0;
-  }
-
   static T exchange(T& target, T value)
   {
     T ret;
@@ -334,51 +233,28 @@ public:
     );
     return ret;
   }
+
+  static bool compare_exchange(T& target, T& expected, T desired)
+  {
+    bool ret;
+    T actual;
+    __asm__ __volatile__(
+      "1: ldaxrh %w1, %4\n\t"
+      "cmp %w1, %w2\n\t"
+      "bne 1f\n\t"
+      "stlxrh w1, %w3, %4\n\t"
+      "cbnz w1, 1b\n\t"
+      "1: cset %0, eq\n\t"
+      : "=&r"(ret), "=r"(actual) : "r"(expected), "r"(desired), "Q"(target) : "w1", "memory"
+    );
+    if (!ret) expected = actual;
+    return ret;
+  }
 };
 
 template <class T>
 class ArchAtomics::impl<T, 4> {
 public:
-  static T load(T& target)
-  {
-    T ret;
-    fence();
-    __asm__ __volatile__(
-      "ldar %w0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static T load_exclusive(T& target)
-  {
-    T ret;
-    __asm__ __volatile__(
-      "ldaxr %w0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static void store(T& target, T value)
-  {
-    __asm__ __volatile__(
-      "stlr %w0, %1\n\t"
-      :: "r"(value), "Q"(target) : "memory"
-    );
-    fence();
-  }
-
-  static bool store_exclusive(T& target, T value)
-  {
-    uint32 status;
-    __asm__ __volatile__(
-      "stlxr %w0, %w1, %2\n\t"
-      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
-    );
-    return status == 0;
-  }
-
   static T exchange(T& target, T value)
   {
     T ret;
@@ -390,51 +266,28 @@ public:
     );
     return ret;
   }
+
+  static bool compare_exchange(T& target, T& expected, T desired)
+  {
+    bool ret;
+    T actual;
+    __asm__ __volatile__(
+      "1: ldaxr %w1, %4\n\t"
+      "cmp %w1, %w2\n\t"
+      "bne 1f\n\t"
+      "stlxr w1, %w3, %4\n\t"
+      "cbnz w1, 1b\n\t"
+      "1: cset %0, eq\n\t"
+      : "=&r"(ret), "=r"(actual) : "r"(expected), "r"(desired), "Q"(target) : "w1", "memory"
+    );
+    if (!ret) expected = actual;
+    return ret;
+  }
 };
 
 template <class T>
 class ArchAtomics::impl<T, 8> {
 public:
-  static T load(T& target)
-  {
-    T ret;
-    fence();
-    __asm__ __volatile__(
-      "ldar %0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static T load_exclusive(T& target)
-  {
-    T ret;
-    __asm__ __volatile__(
-      "ldaxr %0, %1\n\t"
-      : "=r"(ret) : "Q"(target)
-    );
-    return ret;
-  }
-
-  static void store(T& target, T value)
-  {
-    __asm__ __volatile__(
-      "stlr %0, %1\n\t"
-      :: "r"(value), "Q"(target) : "memory"
-    );
-    fence();
-  }
-
-  static bool store_exclusive(T& target, T value)
-  {
-    uint32 status;
-    __asm__ __volatile__(
-      "stlxr %w0, %1, %2\n\t"
-      : "=&r"(status) : "r"(value), "Q"(target) : "memory"
-    );
-    return status == 0;
-  }
-
   static T exchange(T& target, T value)
   {
     T ret;
@@ -444,6 +297,23 @@ public:
       "cbnz w1, 1b\n\t"
       : "=&r"(ret) : "r"(value), "Q"(target) : "w1", "memory"
     );
+    return ret;
+  }
+
+  static bool compare_exchange(T& target, T& expected, T desired)
+  {
+    bool ret;
+    T actual;
+    __asm__ __volatile__(
+      "1: ldaxr %1, %4\n\t"
+      "cmp %1, %2\n\t"
+      "bne 1f\n\t"
+      "stlxr w1, %3, %4\n\t"
+      "cbnz w1, 1b\n\t"
+      "1: cset %0, eq\n\t"
+      : "=&r"(ret), "=r"(actual) : "r"(expected), "r"(desired), "Q"(target) : "w1", "memory"
+    );
+    if (!ret) expected = actual;
     return ret;
   }
 };
