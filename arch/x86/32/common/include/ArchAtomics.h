@@ -22,22 +22,17 @@ public:
   template <class T>
   static T load(T& target)
   {
-    T ret;
     fence();
-    __asm__ __volatile__(
-      "mov%z0 %1, %0\n\t"
-      : "=r"(ret) : "m"(target)
-    );
+    T ret = (volatile T&)target;
+    fence();
     return ret;
   }
 
   template <class T>
   static void store(T& target, T value)
   {
-    __asm__ __volatile__(
-      "mov%z0 %0, %1\n\t"
-      :: "r"(value), "m"(target) : "memory"
-    );
+    fence();
+    ((volatile T&)target) = value;
     fence();
   }
 
